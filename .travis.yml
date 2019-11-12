@@ -1,22 +1,22 @@
 sudo: required
 services:
-	- docker
+ - docker
 
 before_install:
-	- docker build -t mkerimbay/multi-docker -f ./client/Dockerfile.dev .
+ - docker build -t mkerimbay/multi-docker -f ./client/Dockerfile.dev .
 
 script:
-	- docker run -e CI=true mkerimbay/multi-docker npm run test -- --coverage
+ - docker run -e CI=true mkerimbay/multi-docker npm run test -- --coverage
 
 after_success:
-	- docker build -t mkerimbay/multi-client ./client
-	- docker build -t mkerimbay/multi-nginx ./nginx
-	- docker build -t mkerimbay/multi-server ./server
-	- docker build -t mkerimbay/multi-worker ./worker
+ - docker build -t mkerimbay/multi-client ./client
+ - docker build -t mkerimbay/multi-nginx ./nginx
+ - docker build -t mkerimbay/multi-server ./server
+ - docker build -t mkerimbay/multi-worker ./worker
 # Log in to Docker CLI
-	- echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_ID" --password-stdin
+ - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_ID" --password-stdin
 # Push images to my Docker hub
-	- docker push mkerimbay/multi-client
-	- docker push mkerimbay/multi-nginx
-	- docker push mkerimbay/multi-server
-	- docker push mkerimbay/multi-worker
+ - docker push mkerimbay/multi-client
+ - docker push mkerimbay/multi-nginx
+ - docker push mkerimbay/multi-server
+ - docker push mkerimbay/multi-worker
