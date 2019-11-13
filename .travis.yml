@@ -6,7 +6,7 @@ before_install:
  - docker build -t mkerimbay/multi-docker -f ./client/Dockerfile.dev ./client
 
 script:
- - docker run -e CI=true mkerimbay/multi-docker npm run test -- --coverage
+ - docker run -e CI=true mkerimbay/multi-docker npm test -- --coverage
 
 after_success:
  - docker build -t mkerimbay/multi-client ./client
