@@ -1,0 +1,197 @@
+#include <mcp_can_dfs.h>
+#include <mcp_can.h>
+#include <string.h> 
+#include <typeinfo.h>
+
+
+const byte MCP_INT_PIN = 2;
+const byte SPI_CS_PIN = 10;
+MCP_CAN CAN(SPI_CS_PIN);
+
+//To store CAN Tx data
+byte command_read_encoder[8] = {0x90, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+byte command_write_encoder_offset[8] = {0x91, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+byte command_speed_control[8] = {0xA2, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+byte command_position_control_1[8] = {0xA3, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+byte command_position_control_2[8] = {0xA4, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+byte command_position_control_3[8] = {0xA5, 0x01, 0x00, 0x00, 0x9F, 0x8C, 0x00, 0x00};
+byte command_stop_motor[8] = {0x81, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+byte command_start_motor[8] = {0x88, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+byte command_read_PID[8] = {0x30, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+byte command_write_PID_RAM[8] = {0x31, 0x00, 0x60, 0x60, 0x30, 0x20, 0x32, 0x32};
+byte command_single_circle_angle[8] = {0x94, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+byte command_read_multi_turn_angle[8] = {0x92, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+byte command_write_current_pos_motor_zero[8] = {0x19, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+byte command_read_mtr_status_1[8] = {0x9A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+byte command_read_mtr_status_2[8] = {0x9C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+
+byte command_position_control1_0_degree[8] = {0xA3, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+byte command_position_control1_45_degree[8] = {0xA3, 0x00, 0x00, 0x00, 0xD0, 0x78, 0x02, 0x00};
+byte command_position_control1_90_degree[8] = {0xA3, 0x00, 0x00, 0x00, 0xA0, 0xF1, 0x04, 0x00};
+byte command_position_control1_180_degree[8] = {0xA3, 0x00, 0x00, 0x00, 0x40, 0xE3, 0x09, 0x00};
+byte command_position_control1_225_degree[8] = {0xA3, 0x00, 0x00, 0x00, 0x10, 0x5C, 0x0C, 0x00};
+byte command_position_control1_270_degree[8] = {0xA3, 0x00, 0x00, 0x00, 0xE0, 0xD4, 0x0E, 0x00};
+byte command_position_control1_370_degree[8] = {0xA3, 0x00, 0x00, 0x00, 0x20, 0x53, 0x14, 0x00};
+
+//To store CAN Rx data
+byte len = 0;
+unsigned char reply[8];
+unsigned long canId;
+unsigned int encoder_value;
+
+void setup() {
+  pinMode(MCP_INT_PIN, INPUT);
+  Serial.begin (9600);
+  delay(1000);
+
+  while (CAN_OK != CAN.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ )) {
+    Serial.println("MCP init fail");
+    Serial.println("init MCP again");
+  }
+  Serial.println("MCP init successful");
+
+  //To set MCP in Normal mode so that it can transmit data to CAN bus.
+  CAN.setMode(MCP_NORMAL);
+
+  //Pin 2 as input
+  pinMode (MCP_INT_PIN, INPUT);
+
+  //Reading motor status1
+  CAN.sendMsgBuf(0x141, 0, 8, command_read_mtr_status_1);
+  read_response();
+
+
+  // //Reading multiturn angle at the starting
+  // CAN.sendMsgBuf(0x141, 0, 8, command_read_multi_turn_angle);
+  // read_response();
+
+  // CAN.sendMsgBuf(0x141, 0, 8, command_read_encoder);
+  // read_response();
+
+  // CAN.sendMsgBuf(0x141, 0, 8, command_position_control1_180_degree);
+  // read_response();
+  // delay(8000);
+
+  // CAN.sendMsgBuf(0x141, 0, 8, command_position_control1_45_degree);
+  // read_response();
+  // delay(8000);
+
+  // CAN.sendMsgBuf(0x141, 0, 8, command_stop_motor);
+  // read_response();
+
+  
+
+}
+
+void loop() {
+ 
+  // Serial.println("Enter Angle");
+
+  // while (Serial.available() == 0);
+  // int angle = Serial.parseInt();
+  // Serial.println("entered angle: ");
+  // Serial.print(angle);
+  // Serial.println();
+  
+  // switch (angle) {
+  //   case 45:  //Rotates motor shaft to 1620º wrt zero pos
+  //     Serial.println("entered angle: ");
+  //     Serial.print(45);
+  //     CAN.sendMsgBuf(0x141, 0, 8, command_position_control1_45_degree);
+  //     while (digitalRead(MCP_INT_PIN) != 0);
+  //     CAN.readMsgBuf(&canId, &len, reply);
+  //     break;
+
+  //   case 90:  //Rotates motor shaft to 1620º wrt zero pos
+  //     CAN.sendMsgBuf(0x141, 0, 8, command_position_control1_90_degree);
+  //     while (digitalRead(MCP_INT_PIN) != 0);
+  //     CAN.readMsgBuf(&canId, &len, reply);
+  //     break;
+
+  //   case 180: //Rotates motor shaft to 3240º wrt zero pos
+  //     CAN.sendMsgBuf(0x141, 0, 8, command_position_control1_180_degree);
+  //     while (digitalRead(MCP_INT_PIN) != 0);
+  //     CAN.readMsgBuf(&canId, &len, reply);
+  //     break;
+  //   case 225: //Rotates motor shaft to 8100º wrt zero pos
+  //     CAN.sendMsgBuf(0x141, 0, 8, command_position_control1_225_degree);
+  //     while (digitalRead(MCP_INT_PIN) != 0);
+  //     CAN.readMsgBuf(&canId, &len, reply);
+  //     break;
+
+  //   case 270: //Rotates motor shaft to 9720º wrt zero pos
+  //     CAN.sendMsgBuf(0x141, 0, 8, command_position_control1_270_degree);
+  //     while (digitalRead(MCP_INT_PIN) != 0);
+  //     CAN.readMsgBuf(&canId, &len, reply);
+  //     break;
+
+  //   case 370: //Rotates motor shaft to 9720º wrt zero pos
+  //     CAN.sendMsgBuf(0x141, 0, 8, command_position_control1_370_degree);
+  //     while (digitalRead(MCP_INT_PIN) != 0);
+  //     CAN.readMsgBuf(&canId, &len, reply);
+  //     break;
+
+  //   default:
+  //     Serial.println("Please choose a valid selection");
+  // }
+  
+  //  delay(5000); 
+   
+  // CAN.sendMsgBuf(0x141, 0, 8, command_read_multi_turn_angle);
+  // while (digitalRead(MCP_INT_PIN) != 0);
+  // CAN.readMsgBuf(&canId, &len, reply);
+  // Serial.println("Reply Received from motor");
+  // for (int i = 0; i < len; i++)
+  // {
+  //   Serial.print(reply[i], HEX);
+  //   Serial.print("\t");
+  // }
+
+}
+int x2i(char *s) 
+{
+  int x = 0;
+  for(;;) {
+    char c = *s;
+    if (c >= '0' && c <= '9') {
+      x *= 16;
+      x += c - '0'; 
+    }
+    else if (c >= 'A' && c <= 'F') {
+      x *= 16;
+      x += (c - 'A') + 10; 
+    }
+    else break;
+    s++;
+  }
+  return x;
+}
+
+
+void read_response() {
+  while (digitalRead(MCP_INT_PIN) != 0);
+  CAN.readMsgBuf(&canId, &len, reply);
+  Serial.print("Reply Received from motor: ");
+  Serial.print(canId, HEX);
+  Serial.print(" -> ");
+  for (int i = 0; i < len; i++)
+  {
+
+    Serial.print(reply[i]);
+    Serial.print("\t");
+  }
+  Serial.print("\n");
+
+  switch (reply[0]) {
+    case 154:
+      Serial.print("Temp: ");
+      Serial.print(reply[1]);
+      Serial.print("C degrees");
+      String s5 = String(reply[5], HEX);
+      String s4 = String(reply[4], HEX);
+      Serial.println(typeid(s4).name());
+      int v = x2i("13A");
+      Serial.println(v);
+
+  }
+}
